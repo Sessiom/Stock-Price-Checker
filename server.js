@@ -3,14 +3,27 @@ require('dotenv').config();
 const express     = require('express');
 const bodyParser  = require('body-parser');
 const cors        = require('cors');
+const helmet = require('helmet');  // Security
 
 const apiRoutes         = require('./routes/api.js');
 const fccTestingRoutes  = require('./routes/fcctesting.js');
 const runner            = require('./test-runner');
+const { contentSecurityPolicy } = require('helmet');
 
 const app = express();
 
 app.use('/public', express.static(process.cwd() + '/public'));
+
+// Security 
+app.use(
+  helmet.contentSecurityPolicy({
+    directives: {
+      defaultSrc: ["'self'"],
+      scriptSrc: ["'self'"],  //only allow scripts to run from server
+      styleSrc: ["'self'"],  //only allow css to run from the server
+    },
+  })
+); 
 
 app.use(cors({origin: '*'})); //For FCC testing purposes only
 
