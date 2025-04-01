@@ -13,9 +13,9 @@ const stockSchema = new mongoose.Schema({
 const Stock = mongoose.model('Stock', stockSchema)
 
 const getStock = async (stock) => {
-  const response = await fetch(`https://stock-price-checker-proxy.freecodecamp.rocks/v1/stock/${stock}/quote`)
-  const { symbol, latestPrice } = await response.json()
-  return { symbol, latestPrice }
+    const response = await fetch(`https://stock-price-checker-proxy.freecodecamp.rocks/v1/stock/${stock}/quote`)
+    const { symbol, latestPrice } = await response.json()
+    return { symbol, latestPrice }
 }
 
 //Hash IP
@@ -27,7 +27,10 @@ const hashIP = async (ip) => {
 
 //Create stock
 const createStock = async (stock, like, ip) => {
-  const hashedIP = await hashIP(ip)
+  let hashedIP
+  if(like){
+    hashedIP = await hashIP(ip)
+  }
   const newStock = new Stock({
     symbol: stock,
     likes: like ? [hashedIP] : []
@@ -49,7 +52,9 @@ const saveStock = async (stock, like, ip) => {
     const savedStock = await createStock(stock, like, ip);
     return savedStock
   } else {
-
+    if (!like) {
+      return foundStock
+    }
     //If user likes a stock, compare ip to all ips 
     if ( like ){
       //If ip exists in likes, return the stock
@@ -71,10 +76,11 @@ module.exports = function (app) {
   app.route('/api/stock-prices')
     .get(async function (req, res){
       const { stock, like } = req.query 
+      const parsedLike = like === 'true'
       const ip = req.ip
       // If stock does not exist
       if(!stock){
-        res.json({stockDate: { likes: like ? 1 : 0}})
+        res.json({stockDate: { likes: parsedLike ? 1 : 0}})
         return
       }
 
@@ -88,8 +94,8 @@ module.exports = function (app) {
         }
 
         //Check stock in DB for likes
-        const stock1 = await saveStock(stockArray[0].stock, like, ip)
-        const stock2 = await saveStock(stockArray[1].stock, like, ip)
+        const stock1 = await saveStock(stockArray[0].stock, parsedLike, ip)
+        const stock2 = await saveStock(stockArray[1].stock, parsedLike, ip)
 
         const stock_1_likes = stock1.likes.length
         const stock_2_likes = stock2.likes.length
@@ -103,12 +109,17 @@ module.exports = function (app) {
       // If query has one stock
       else {
         const { symbol, latestPrice } = await getStock(stock)
+        if(symbol == undefined || latestPrice == undefined){
+          res.json({Error: "invalid symbol"})
+          return 
+        }
 
+        console.log(symbol, parsedLike, ip)
         //Check stock in DB for likes
-        const saved = await saveStock(symbol, like, ip)
-
+        const saved = await saveStock(symbol, parsedLike, ip)
+        console.log(symbol, latestPrice, saved.likes.length)
         res.json({stockData: {
-          stock: saved.symbol,
+          stock: symbol,
           price: latestPrice,
           likes: saved.likes.length
         }})
