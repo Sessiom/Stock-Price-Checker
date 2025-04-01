@@ -6,11 +6,11 @@ const bcrypt = require('bcryptjs'); // For hashing IP Addresses
 
 // Schema setup
 const stockSchema = new mongoose.Schema({
-  ip: { type: String, required: true },
+  symbol: { type: String, required: true },
   likes: { type: [String], default: [] }
 })
 
-const Stock = mongoose.model('IpAddress', stockSchema)
+const Stock = mongoose.model('Stock', stockSchema)
 
 const getStock = async (stock) => {
   const response = await fetch(`https://stock-price-checker-proxy.freecodecamp.rocks/v1/stock/${stock}/quote`)
@@ -30,7 +30,7 @@ const createStock = async (stock, like, ip) => {
   const hashedIP = await hashIP(ip)
   const newStock = new Stock({
     symbol: stock,
-    like: like ? [hashedIP] : []
+    likes: like ? [hashedIP] : []
   })
   
   const savedStock = await newStock.save();
@@ -43,7 +43,7 @@ const findStock = async (stock) => {
 }
 
 //Save stock
-saveStock = async (stock, like, ip) => {
+const saveStock = async (stock, like, ip) => {
   const foundStock = await findStock(stock);
   if(!foundStock) {
     const savedStock = await createStock(stock, like, ip);
@@ -53,11 +53,11 @@ saveStock = async (stock, like, ip) => {
     //If user likes a stock, compare ip to all ips 
     if ( like ){
       //If ip exists in likes, return the stock
-      foundStock.likes.forEach(async (hashedIP) => {
-        if(bcrypt.compare(ip, hashedIP)){
-          return foundStock
+      for (const hashedIP of foundStock.likes) {
+        if (bcrypt.compareSync(ip, hashedIP)) {
+          return foundStock; 
         }
-      })
+      }
       //If ip does not exist, add the new ip to likes
       const hash = await hashIP(ip)
       foundStock.likes.push(hash)
@@ -81,15 +81,15 @@ module.exports = function (app) {
       // If query has multiple stocks
       if(Array.isArray(stock)){
         let stockArray = []
-        stock.forEach(async (stock) => {
-          const { symbol, latestPrice } = await getStock(stock)
 
-          stockArray.push({stock: symbol, price: parseInt(latestPrice)})
-        })
+        for (const s of stock) {
+          const { symbol, latestPrice } = await getStock(s);
+          stockArray.push({ stock: symbol, price: latestPrice});
+        }
 
         //Check stock in DB for likes
-        const stock1 = await saveStock(stockArray[0].symbol, like, ip)
-        const stock2 = await saveStock(stockArray[1].symbol, like, ip)
+        const stock1 = await saveStock(stockArray[0].stock, like, ip)
+        const stock2 = await saveStock(stockArray[1].stock, like, ip)
 
         const stock_1_likes = stock1.likes.length
         const stock_2_likes = stock2.likes.length
@@ -110,7 +110,7 @@ module.exports = function (app) {
         res.json({stockData: {
           stock: saved.symbol,
           price: latestPrice,
-          likes: saved.likes
+          likes: saved.likes.length
         }})
       }
     });
