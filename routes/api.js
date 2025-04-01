@@ -71,7 +71,7 @@ module.exports = function (app) {
   app.route('/api/stock-prices')
     .get(async function (req, res){
       const { stock, like } = req.query 
-
+      const ip = req.ip
       // If stock does not exist
       if(!stock){
         res.json({stockDate: { likes: like ? 1 : 0}})
@@ -83,17 +83,34 @@ module.exports = function (app) {
         let stockArray = []
         stock.forEach(async (stock) => {
           const { symbol, latestPrice } = await getStock(stock)
+
           stockArray.push({stock: symbol, price: parseInt(latestPrice)})
         })
+
+        //Check stock in DB for likes
+        const stock1 = await saveStock(stockArray[0].symbol, like, ip)
+        const stock2 = await saveStock(stockArray[1].symbol, like, ip)
+
+        const stock_1_likes = stock1.likes.length
+        const stock_2_likes = stock2.likes.length
+
+        stockArray[0].rel_likes = stock_1_likes - stock_2_likes
+        stockArray[1].rel_likes = stock_2_likes - stock_1_likes
+
         res.json({stockData: stockArray})
       } 
 
       // If query has one stock
       else {
         const { symbol, latestPrice } = await getStock(stock)
+
+        //Check stock in DB for likes
+        const saved = await saveStock(symbol, like, ip)
+
         res.json({stockData: {
-          stock: symbol,
+          stock: saved.symbol,
           price: latestPrice,
+          likes: saved.likes
         }})
       }
     });
