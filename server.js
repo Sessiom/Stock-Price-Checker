@@ -4,11 +4,11 @@ const express     = require('express');
 const bodyParser  = require('body-parser');
 const cors        = require('cors');
 const helmet = require('helmet');  // Security
+const mongoose = require('mongoose'); // For MongoDB
 
 const apiRoutes         = require('./routes/api.js');
 const fccTestingRoutes  = require('./routes/fcctesting.js');
 const runner            = require('./test-runner');
-const { contentSecurityPolicy } = require('helmet');
 
 const app = express();
 
@@ -24,6 +24,18 @@ app.use(
     },
   })
 ); 
+
+// MongoDB connection
+const databaseConnect = async () => {
+  try {
+    await mongoose.connect(process.env.MONGO_URI).then(
+      console.log("Connected to database!")
+    )
+  } catch (error) {
+    console.log("Failed to connect to database", error)
+  }
+}
+databaseConnect();
 
 app.use(cors({origin: '*'})); //For FCC testing purposes only
 
