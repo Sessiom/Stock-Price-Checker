@@ -114,10 +114,8 @@ module.exports = function (app) {
           return 
         }
 
-        console.log(symbol, parsedLike, ip)
         //Check stock in DB for likes
         const saved = await saveStock(symbol, parsedLike, ip)
-        console.log(symbol, latestPrice, saved.likes.length)
         res.json({stockData: {
           stock: symbol,
           price: latestPrice,
